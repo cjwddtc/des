@@ -75,7 +75,24 @@ std::array<unsigned char, 48> p2 = {
 two_array<unsigned long long, 8, 256> p2_array;
 two_array<unsigned long, 8, 256> p1_l_array;
 two_array<unsigned long, 8, 256> p1_r_array;
+namespace test {
 
+template <size_t x, size_t y, typename out_type, size_t count_ = 0>
+class map : private map<x, y, in_type, out_type, count_ + 1> {
+protected:
+  template <typename in_type> inline out_type f(const in_type in) {
+    return map_map[count_][in & ((0x1 << t_log<y>)-1)] |
+           map<x, y, in_type, out_type, count_ + 1>::f(in >> t_log<y>);
+  };
+};
+template <size_t x, size_t y, typename in_type, typename out_type>
+class map<x, y, in_type, out_type, x> {
+protected:
+  two_array<out_type, x, y> map_map;
+
+protected:
+  template <typename in_type> inline out_type f(const in_type in) { return 0; };
+};
 namespace no_use {
 template <size_t IN, size_t n> struct t_log_ { static size_t value; };
 template <size_t IN, size_t n>
@@ -201,43 +218,27 @@ void gen_sub_key(unsigned long long key, unsigned long long keys[16]) {
   return;
 }
 
-void bmp_tran_des(std::iostream &stream, unsigned long long keys[16]) {
+void bmp_des(std::iostream &stream, unsigned long long keys[16], bool d) {
   char a[14];
-  stream.seekg(0, std::ios_base::beg);
+  std::function<unsigned long long(unsigned long long, unsigned long long[16])>
+      f;
+  if (d)
+    f = des;
+  else
+    f = ddes;
   stream.read(a, 14);
   unsigned long m = *(unsigned long *)&a[2];
   unsigned long n = *(unsigned long *)&a[10];
   stream.seekg(n, std::ios_base::beg);
   char *ptr = (char *)malloc(m - n);
   stream.read(ptr, m - n);
-  *(unsigned long long *)ptr = des(*(unsigned long long *)ptr, keys);
-  unsigned long long *lptr =
-      (unsigned long long *)(ptr + ((m - n - 1) & 0x7) + 1);
-  for (unsigned i = 0; i<(m - n - 1)>> 3; i++) {
-    *lptr++ = des(*lptr, keys);
+  unsigned long long *lptr = (unsigned long long *)ptr;
+  for (unsigned i = 0; i<(m - n)>> 3; i++, lptr++) {
+    *lptr = f(*lptr, keys);
   }
   stream.seekp(n, std::ios_base::beg);
   stream.write(ptr, m - n);
-  return;
-}
-
-void bmp_tran_ddes(std::iostream &stream, unsigned long long keys[16]) {
-  char a[14];
-  stream.seekg(0, std::ios_base::beg);
-  stream.read(a, 14);
-  unsigned long m = *(unsigned long *)&a[2];
-  unsigned long n = *(unsigned long *)&a[10];
-  stream.seekg(n, std::ios_base::beg);
-  char *ptr = (char *)malloc(m - n);
-  stream.read(ptr, m - n);
-  unsigned long long *lptr =
-      (unsigned long long *)(ptr + ((m - n - 1) & 0x7) + 1);
-  for (unsigned i = 0; i<(m - n - 1)>> 3; i++) {
-    *lptr++ = ddes(*lptr, keys);
-  }
-  *(unsigned long long *)ptr = ddes(*(unsigned long long *)ptr, keys);
-  stream.seekp(n, std::ios_base::beg);
-  stream.write(ptr, m - n);
+  free(ptr);
   return;
 }
 
@@ -245,11 +246,14 @@ int main() {
   init();
   unsigned long long keys[16];
   gen_sub_key(0x0, keys);
-  std::fstream f("asd.bmp");
-  bmp_tran_ddes(f, keys);
-  f.close(); /*
-  unsigned long long m = 0x1;
-  scanf("%llx", &m);
-  printf("%llx", ddes(des(m, keys), keys));*/
-  return 0;
+  std::fstream f("asd.bmp", std::ios_base::in | std::ios_base::out |
+                                std::ios_base::binary);
+  bmp_des(f, keys, 0);
+  f.close();
+  /*
+    unsigned long long m = 0x1;
+    scanf("%llx", &m);
+    printf("%llx", ddes(des(m, keys), keys));
+    return 0;
+    */
 }
