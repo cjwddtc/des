@@ -49,131 +49,94 @@ unsigned char s_array[8][64] = {
      7,  11, 4,  1, 9,  12, 14, 2,  0,  6,  10, 13, 15, 3,  5,  8,
      1,  15, 13, 8, 10, 3,  7,  4,  12, 5,  6,  11, 0,  14, 9,  2,
      2,  1,  14, 7, 4,  10, 8,  13, 15, 12, 9,  0,  3,  5,  6,  11}};
-two_array<unsigned long, 8, 64> s_box_array;
 std::array<unsigned char, 32> p_box_data = {
     16, 7, 20, 21, 29, 12, 28, 17, 1,  15, 23, 26, 5,  18, 31, 10,
     2,  8, 24, 14, 32, 27, 3,  9,  19, 13, 30, 6,  22, 11, 4,  25};
-two_array<unsigned long, 4, 256> p_box_array;
 std::array<unsigned char, 48> extend_data = {
     32, 1,  2,  3,  4,  5,  4,  5,  6,  7,  8,  9,  8,  9,  10, 11,
     12, 13, 12, 13, 14, 15, 16, 17, 16, 17, 18, 19, 20, 21, 20, 21,
     22, 23, 24, 25, 24, 25, 26, 27, 28, 29, 28, 29, 30, 31, 32, 1};
-two_array<unsigned long long, 4, 256> extend_array;
 
 unsigned char key_shift[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
-std::array<unsigned char, 28> p1_l = {57, 49, 41, 33, 25, 17, 9,  1,  58, 50,
-                                      42, 34, 26, 18, 10, 2,  59, 51, 43, 35,
-                                      27, 19, 11, 3,  60, 52, 44, 36};
-std::array<unsigned char, 28> p1_r = {63, 55, 47, 39, 31, 23, 15, 7,  62, 54,
-                                      46, 38, 30, 22, 14, 6,  61, 53, 45, 37,
-                                      29, 21, 13, 5,  28, 20, 12, 4};
-std::array<unsigned char, 48> p2 = {
+std::array<unsigned char, 28> p1_l_data = {
+    57, 49, 41, 33, 25, 17, 9,  1,  58, 50, 42, 34, 26, 18,
+    10, 2,  59, 51, 43, 35, 27, 19, 11, 3,  60, 52, 44, 36};
+std::array<unsigned char, 28> p1_r_data = {
+    63, 55, 47, 39, 31, 23, 15, 7,  62, 54, 46, 38, 30, 22,
+    14, 6,  61, 53, 45, 37, 29, 21, 13, 5,  28, 20, 12, 4};
+std::array<unsigned char, 48> p2_data = {
     14, 17, 11, 24, 1,  5,  3,  28, 15, 6,  21, 10, 23, 19, 12, 4,
     26, 8,  16, 7,  27, 20, 13, 2,  41, 52, 31, 37, 47, 55, 30, 40,
     51, 45, 33, 48, 44, 49, 39, 56, 34, 53, 46, 42, 50, 36, 29, 32};
 
-two_array<unsigned long long, 8, 256> p2_array;
-two_array<unsigned long, 8, 256> p1_l_array;
-two_array<unsigned long, 8, 256> p1_r_array;
-namespace test {
-
-template <size_t x, size_t y, typename out_type, size_t count_ = 0>
-class map : private map<x, y, in_type, out_type, count_ + 1> {
-protected:
-  template <typename in_type> inline out_type f(const in_type in) {
-    return map_map[count_][in & ((0x1 << t_log<y>)-1)] |
-           map<x, y, in_type, out_type, count_ + 1>::f(in >> t_log<y>);
+namespace no_use {
+template <size_t IN, size_t n> struct get_bit_ {
+  static_assert(IN & 0x1);
+  static size_t value;
+};
+template <size_t IN, size_t n>
+size_t get_bit_<IN, n>::value = get_bit_<IN / 2, n + 1>::value;
+template <size_t n> struct get_bit_<0, n> { static size_t value; };
+template <size_t n> size_t get_bit_<0, n>::value = n;
+}
+template <size_t IN> size_t get_bit = no_use::get_bit_<IN - 1, 0>::value;
+template <size_t x, size_t y, typename out_type, size_t count_>
+class map_ : protected map_<x, y, out_type, count_ + 1> {
+public:
+  template <typename in_type> inline out_type map(const in_type in) {
+    return this->map_map[count_][in & ((0x1 << get_bit<y>)-1)] |
+           map_<x, y, out_type, count_ + 1>::map(in >> get_bit<y>);
   };
 };
-template <size_t x, size_t y, typename in_type, typename out_type>
-class map<x, y, in_type, out_type, x> {
+template <size_t x, size_t y, typename out_type> class map_<x, y, out_type, x> {
 protected:
   two_array<out_type, x, y> map_map;
-
-protected:
-  template <typename in_type> inline out_type f(const in_type in) { return 0; };
-};
-namespace no_use {
-template <size_t IN, size_t n> struct t_log_ { static size_t value; };
-template <size_t IN, size_t n>
-size_t t_log_<IN, n>::value = t_log_<IN / 2, n + 1>::value;
-template <size_t n> struct t_log_<0, n> { static size_t value; };
-template <size_t n> size_t t_log_<0, n>::value = n;
-}
-template <size_t IN> size_t t_log = no_use::t_log_<IN - 1, 0>::value;
-namespace no_use {
-template <size_t x, size_t y, typename in_type, typename out_type,
-          size_t count_ = 0>
-struct tran {
-  static inline out_type f(const in_type in,
-                           const two_array<out_type, x, y> &array) {
-    return array[count_][in & ((0x1 << t_log<y>)-1)] |
-           tran<x, y, in_type, out_type, count_ + 1>::f(in >> t_log<y>, array);
-  };
-};
-template <size_t x, size_t y, typename in_type, typename out_type>
-struct tran<x, y, in_type, out_type, x> {
-  static inline out_type f(const in_type in,
-                           const two_array<out_type, x, y> &array) {
+  template <typename in_type> inline constexpr out_type map(const in_type in) {
     return 0;
   };
 };
-}
 
-template <size_t x, size_t y, typename in_type, typename out_type>
-static inline out_type map(const in_type in,
-                           const two_array<out_type, x, y> &array) {
-  return no_use::tran<x, y, in_type, out_type>::f(in, array);
-}
-
-// init map by data
-template <size_t x, size_t y, typename out_type, size_t size>
-static inline void init(std::array<unsigned char, size> source,
-                        two_array<out_type, x, y> &map) {
-  std::multimap<unsigned char, signed char> cache;
-  for (signed char i = 0; i < size; i++) {
-    cache.insert(
-        std::make_pair(source[i], i - (source[i] & (1 << t_log<y>)-1)));
+template <typename out_type, size_t x, size_t y>
+class bit_pos_map : public map_<x, y, out_type, 0> {
+public:
+  template <size_t size> bit_pos_map(std::array<unsigned char, size> source) {
+    std::multimap<unsigned char, signed char> cache;
+    for (signed char i = 0; i < size; i++) {
+      cache.insert(std::make_pair((source[i] - 1),
+                                  i - ((source[i] - 1) & (1 << get_bit<y>)-1)));
+    }
+    for (out_type i = 0; i < 256; i++)
+      for (unsigned n = 0; n < x; n++)
+        for (unsigned j = 0; j < get_bit<y>; j++)
+          for (auto it = cache.equal_range(n * get_bit<y> + j).first;
+               it != cache.equal_range(n * get_bit<y> + j).second; it++)
+            this->map_map[n][i] |= it->second > 0
+                                       ? (i & 0x1u << j) << it->second
+                                       : (i & 0x1u << j) >> -it->second;
   }
-  for (out_type i = 0; i < 256; i++)
-    for (unsigned n = 0; n < x; n++)
-      for (unsigned j = 0; j < t_log<y>; j++)
-        for (auto it = cache.equal_range(n * t_log<y> + j).first;
-             it != cache.equal_range(n * t_log<y> + j).second; it++)
-          map[n][i] |= it->second > 0 ? (i & 0x1u << j) << it->second
-                                      : (i & 0x1u << j) >> -it->second;
-}
-template <typename T> static inline void dec_all(T &a) {
-  std::transform(
-      a.begin(), a.end(), a.begin(),
-      std::bind(std::minus<unsigned char>(), std::placeholders::_1, 1));
-}
-
-void init_s() {
-  for (unsigned i = 1; i < 8; i++) {
-    for (unsigned j = 0; j < 64; j++) {
-      s_box_array[i][j] = s_array[i][j];
-      s_box_array[i][j] <<= 4 * i;
+};
+template <typename out_type, size_t x, size_t y>
+class block_map : public map_<x, y, out_type, 0> {
+public:
+  template <typename block_type> block_map(block_type (*source_map)[y]) {
+    for (unsigned i = 0; i < x; i++) {
+      for (unsigned j = 0; j < y; j++) {
+        this->map_map[i][j] = source_map[i][j];
+        this->map_map[i][j] <<= 4 * i;
+      }
     }
   }
-}
+};
 
-void init() {
-  dec_all(p_box_data);
-  dec_all(p1_l);
-  dec_all(p1_r);
-  dec_all(p2);
-  dec_all(extend_data);
-  init(extend_data, extend_array);
-  init(p_box_data, p_box_array);
-  init(p1_l, p1_l_array);
-  init(p1_r, p1_r_array);
-  init(p2, p2_array);
-  init_s();
-}
+bit_pos_map<unsigned long long, 8, 256> p2(p2_data);
+bit_pos_map<unsigned long, 8, 256> p1_l(p1_l_data);
+bit_pos_map<unsigned long, 8, 256> p1_r(p1_r_data);
+bit_pos_map<unsigned long, 4, 256> p_box(p_box_data);
+bit_pos_map<unsigned long long, 4, 256> extend(extend_data);
+block_map<unsigned long, 8, 64> s_box(s_array);
 
 unsigned long f(unsigned long value, unsigned long long key) {
-  return map(map(map(value, extend_array) ^ key, s_box_array), p_box_array);
+  return p_box.map(s_box.map(extend.map(value) ^ key));
 }
 
 unsigned long long des(unsigned long long value, unsigned long long keys[16]) {
@@ -205,15 +168,15 @@ unsigned long long ddes(unsigned long long value, unsigned long long keys[16]) {
 }
 
 void gen_sub_key(unsigned long long key, unsigned long long keys[16]) {
-  unsigned long long left = map(key, p1_l_array);
+  unsigned long long left = p1_l.map(key);
   left |= left << 28;
-  unsigned long long right = map(key, p1_r_array);
+  unsigned long long right = p1_r.map(key);
   right |= right << 28;
   for (unsigned i = 0; i < 16; i++) {
     left >>= key_shift[i];
     right >>= key_shift[i];
     unsigned long long key_ = (left & 0xfffffff) | right << 28;
-    keys[i] = map(key_, p2_array);
+    keys[i] = p2.map(key_);
   }
   return;
 }
@@ -243,12 +206,11 @@ void bmp_des(std::iostream &stream, unsigned long long keys[16], bool d) {
 }
 
 int main() {
-  init();
   unsigned long long keys[16];
   gen_sub_key(0x0, keys);
   std::fstream f("asd.bmp", std::ios_base::in | std::ios_base::out |
                                 std::ios_base::binary);
-  bmp_des(f, keys, 0);
+  bmp_des(f, keys, 1);
   f.close();
   /*
     unsigned long long m = 0x1;
